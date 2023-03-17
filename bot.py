@@ -3,8 +3,9 @@ import responses
 import random
 import json
 import re
+from responses import*
 
-c = open('config.json')
+c = open('data/config.json')
 config = json.load(c)
 TOKEN = config.get("Token")
 
@@ -15,25 +16,10 @@ bazinga_count = 0
 async def send_message(message, user_message, is_private):
     try:
         response = responses.handle_responses(user_message)
-        if response is not None:
-            if len(response) < 2000:
-                print(len(response))
-                print("Less than 2000")
-                response = '>>> ' + response
-                await message.author.send(response) if is_private else await message.channel.send(response)
-            else:
-                print(len(response))
-                print("More than 2000")
-                split_response = response.split("-----------")
-                if len(split_response) == 3:
-                    if len(split_response[2]) > 2000:
-                        split_legendary = split_response[2].split('\n\n',3)
-                        split_response.pop()
-                        split_response += split_legendary 
-                split_prepend = ['>>> ' + part for part in split_response]
-                split_response = split_prepend
-                for response_part in split_response:
-                    await message.author.send(response_part) if is_private else await message.channel.send(response_part)
+        if type(response) == discord.embeds.Embed:
+            await message.author.send(embed=response) if is_private else await message.channel.send(embed=response)
+        else:
+            await message.author.send(response) if is_private else await message.channel.send(response)
     except Exception as e:
         print(e)
     
@@ -50,11 +36,52 @@ def run_discord_bot():
     async def on_message(message):
         if message.author == client.user:
             return
-        
+        if not message.content:
+            return
         
         username = str(message.author)
         user_message = str(message.content)
         channel = str(message.channel)
+
+        if user_message == '?embed':
+            m = open('data/srd_5e_monsters.json', 'r', encoding='utf-8')
+            monsters = json.load(m)
+            m.close()
+            monster = monsters[0]
+            monster_embed=discord.Embed(title="{name}".format(**monster), color=0x9B59B6)
+            monster_embed.add_field(name="", value="*{meta}*".format(**monster),inline=True)
+            monster_embed.add_field(name="", value="----------",inline=False)
+            monster_embed.add_field(name="", value="**Armor Class**\t{Armor Class}".format(**monster),inline=False)
+            monster_embed.add_field(name="", value="**Hit Points**\t{Hit Points}".format(**monster),inline=False)
+            monster_embed.add_field(name="", value="**Speed**\t{Speed}".format(**monster),inline=False)
+            monster_embed.add_field(name="", value="----------",inline=False)
+            monster_embed.add_field(name="",value="**STR**\t\t**DEX**\t\t**CON**\t\t**INT**\t\t**WIS**\t\t**CHAR**\n\
+            {STR}{STR_mod}\t{DEX}{DEX_mod}\t{CON}{CON_mod}\t{INT}{INT_mod}\t{WIS}{WIS_mod}\t{CHA}{CHA_mod}".format(**monster))
+            monster_embed.add_field(name="", value="----------",inline=False)
+            if 'Saving Throws' in monster:
+                monster_embed.add_field(name="", value="**Saving Throws**\t{Saving Throws}".format(**monster),inline=False)
+            if 'Skills' in monster:
+                monster_embed.add_field(name="", value="**Skills**\t{Skills}".format(**monster),inline=False)
+            if 'Damage Vulnerabilities' in monster:
+                monster_embed.add_field(name="", value="**Damage Vulnerabilities**\t{Damage Vulnerabilities}".format(**monster),inline=False)
+            if 'Damage Resistances' in monster:
+                monster_embed.add_field(name="", value="**Damage Resistances**\t{Damage Resistances}".format(**monster),inline=False)
+            if 'Damage Immunities' in monster:
+                monster_embed.add_field(name="", value="**Damage Immunities**\t{Damage Immunities}".format(**monster),inline=False)
+            if 'Condition Immunities' in monster:
+                monster_embed.add_field(name="", value="**Condition Immunities**\t{Condition Immunities}".format(**monster),inline=False)
+            monster_embed.add_field(name="", value="**Languages**\t{Languages}".format(**monster),inline=False)
+            monster_embed.add_field(name="", value="**Challenge**\t{Challenge}".format(**monster),inline=False)
+            monster_embed.add_field(name="", value="----------",inline=False)
+            long_text = build_monster_embed_description(monster)
+            chunk_size = 1024
+            chunks = [long_text[i:i+chunk_size] for i in range(0, len(long_text), chunk_size)]
+            for i, chunk in enumerate(chunks):
+                inline = True if i < len(chunks) - 1 else False
+                monster_embed.add_field(name="", value=chunk, inline=False)
+            #monster_embed.add_field(name="", value=build_embed_description(monster))
+            #print(type(monster_embed))
+            await message.channel.send(embed=monster_embed)
         
         #print(type(user_message))
         #print(f"{username} said: {user_message} in {channel}.")
@@ -80,5 +107,6 @@ def run_discord_bot():
             print(Exception)
             print(user_message)
             await send_message(message, user_message, is_private=False)
+    
         
     client.run(TOKEN)

@@ -2,6 +2,7 @@ import random
 import re
 from random import*
 import json
+import discord
 
 
 books_data = "```Currently Approved Books for Character Creation are:\n\
@@ -23,7 +24,7 @@ help_data = "```The following commands have been implemented:\n\
     \n\t?books - Lists books allowed by the club for character creation.\n\
     ?help - lists and describes commands.\n\
     ?hello - Debug command. The bot will greet you with a hello.\n\
-    ?monster - Prints a random monster from the SRD. Abilities and Actions not included yet.\n\
+    ?monster name - Display the selected monster from the srd. If no monster is specified, a random monster is selected.\n\
     ?roll xdy - Dice Roller. \"x\" is the number of rolls you want to make and \"y\" is the dice type. Defaults to rolling once if you don't \n\
     include an x value.\n\
     ?funny - Possibly my greatest achievement as a CS major.\n\
@@ -52,7 +53,7 @@ def handle_responses(message):
     
     if p_message.startswith('?monster'):
         #p_message = p_message[4:]
-        return handle_srd()
+        return handle_srd(p_message)
 pass
 
 def handle_rolls(roll):
@@ -81,59 +82,29 @@ def handle_rolls(roll):
                     \nThe total is {final_result}.```"
     return roll_format_message
 
-def handle_srd():
-    m = open('srd_5e_monsters.json')
+def handle_srd(user_message):
+    m = open('data/srd_5e_monsters.json', 'r', encoding='utf-8')
     monsters = json.load(m)
     m.close()
-    monster = monsters[randint(0,(len(monsters)-1))]
-
-    monster_formatted = format_monster(monster)
-
-    return monster_formatted
-
-def format_monster(monster):
-    monster_formatted = '**{name}**\n\
-*{meta}*\n\
-----------\n\
-**Armor Class** {Armor Class}\n\
-**Hit Points** {Hit Points}\n\
-**Speed {Speed}**\n\
-**STR** **DEX** **CON** **INT** **WIS** **CHAR**\n\
-{STR}{STR_mod} {DEX}{DEX_mod} {CON}{CON_mod} {INT}{INT_mod} {WIS}{WIS_mod} {CHA}{CHA_mod}\n\
-----------\n'.format(**monster)
-    if 'Saving Throws' in monster:
-        monster_formatted += '**Saving Throws** {Saving Throws}\n'.format(**monster)
-    if 'Skills' in monster:
-        monster_formatted += '**Skills** {Skills}\n'.format(**monster)
-    if 'Damage Vulnerabilities' in monster:
-        monster_formatted += '**Damage Vulnerabilities** {Damage Vulnerabilities}\n'.format(**monster)
-    if 'Damage Resistances' in monster:
-        monster_formatted += '**Damage Resistances** {Damage Resistances}\n'.format(**monster)
-    if 'Damage Immunities' in monster:
-        monster_formatted += '**Damage Immunities** {Damage Immunities}\n'.format(**monster)
-    if 'Condition Immunities' in monster:
-        monster_formatted += '**Condition Immunities** {Condition Immunities}\n'.format(**monster)
-    if 'Skills' in monster:
-        monster_formatted += '**Skills** {Skills}\n'.format(**monster)
-    monster_formatted += '**Senses** {Senses}\n\
-**Languages** {Languages}\n\
-**Challenge** {Challenge}\n\
------------\n'.format(**monster)
-    
-    
-    if 'Traits' in monster:
-        monster["Traits"] = format_html(monster["Traits"])
-        monster_formatted += '{Traits}'.format(**monster)
-    if 'Actions' in monster:
-        monster["Actions"] = format_html(monster["Actions"])
-        monster_formatted += '\n**Actions**\n-----------{Actions}'.format(**monster)
-
-    if 'Legendary Actions' in monster:
-        monster["Legendary Actions"] = format_html(monster["Legendary Actions"])
-        monster_formatted += '{Legendary Actions}'.format(**monster)
-    
-    print(monster["name"])
-    return monster_formatted
+    if user_message == '?monster':
+        monster = monsters[randint(0,(len(monsters)-1))]
+        #monster_result = format_monster(monster)
+        monster_result = build_monster_embed(monster)
+        return monster_result
+    else:
+        name_pattern = re.compile("^\?monster\s[a-zA-Z]*")
+        print(user_message)
+        if name_pattern.match(user_message):
+            ("Matched the pattern for name searching.")
+            monster_name = user_message[9:].lower()
+            for m in monsters:
+                if m['name'].lower() == monster_name.lower():
+                    monster = m
+            #monster_result = format_monster(monster)
+            monster_result = build_monster_embed(monster)
+        else:
+            monster_result = 'Error: Monster Not Found.'
+        return monster_result
 
 def format_html(key):
     key = key.replace("<p>","\n")
@@ -143,3 +114,53 @@ def format_html(key):
     key = key.replace("<strong>","**")
     key = key.replace("</strong>","**")
     return key
+
+def build_monster_embed_description(monster):
+    monster_description = ""
+    if 'Traits' in monster:
+        monster["Traits"] = format_html(monster["Traits"])
+        monster_description += '{Traits}'.format(**monster)
+    if 'Actions' in monster:
+        monster["Actions"] = format_html(monster["Actions"])
+        monster_description += '\n**Actions**\n-----------{Actions}'.format(**monster)
+    if 'Legendary Actions' in monster:
+        monster["Legendary Actions"] = format_html(monster["Legendary Actions"])
+        monster_description += '\n**Legendary Actions**\n-----------{Legendary Actions}'.format(**monster)
+    #print(monster_description)
+    return monster_description
+
+def build_monster_embed(monster):
+    monster_embed=discord.Embed(title="{name}".format(**monster), color=0x9B59B6)
+    monster_embed.set_image(url="{img_url}".format(**monster))
+    monster_embed.add_field(name="", value="*{meta}*".format(**monster),inline=True)
+    monster_embed.add_field(name="", value="----------",inline=False)
+    monster_embed.add_field(name="", value="**Armor Class**\t{Armor Class}".format(**monster),inline=False)
+    monster_embed.add_field(name="", value="**Hit Points**\t{Hit Points}".format(**monster),inline=False)
+    monster_embed.add_field(name="", value="**Speed**\t{Speed}".format(**monster),inline=False)
+    monster_embed.add_field(name="", value="----------",inline=False)
+    monster_embed.add_field(name="",value="**STR**\t\t**DEX**\t\t**CON**\t\t**INT**\t\t**WIS**\t\t**CHAR**\n\
+    {STR}{STR_mod}\t{DEX}{DEX_mod}\t{CON}{CON_mod}\t{INT}{INT_mod}\t{WIS}{WIS_mod}\t{CHA}{CHA_mod}".format(**monster))
+    monster_embed.add_field(name="", value="----------",inline=False)
+    if 'Saving Throws' in monster:
+        monster_embed.add_field(name="", value="**Saving Throws**\t{Saving Throws}".format(**monster),inline=False)
+    if 'Skills' in monster:
+        monster_embed.add_field(name="", value="**Skills**\t{Skills}".format(**monster),inline=False)
+    if 'Damage Vulnerabilities' in monster:
+        monster_embed.add_field(name="", value="**Damage Vulnerabilities**\t{Damage Vulnerabilities}".format(**monster),inline=False)
+    if 'Damage Resistances' in monster:
+        monster_embed.add_field(name="", value="**Damage Resistances**\t{Damage Resistances}".format(**monster),inline=False)
+    if 'Damage Immunities' in monster:
+        monster_embed.add_field(name="", value="**Damage Immunities**\t{Damage Immunities}".format(**monster),inline=False)
+    if 'Condition Immunities' in monster:
+        monster_embed.add_field(name="", value="**Condition Immunities**\t{Condition Immunities}".format(**monster),inline=False)
+    monster_embed.add_field(name="", value="**Languages**\t{Languages}".format(**monster),inline=False)
+    monster_embed.add_field(name="", value="**Challenge**\t{Challenge}".format(**monster),inline=False)
+    monster_embed.add_field(name="", value="----------",inline=False)
+    long_text = build_monster_embed_description(monster)
+    chunk_size = 1024
+    chunks = [long_text[i:i+chunk_size] for i in range(0, len(long_text), chunk_size)]
+    for i, chunk in enumerate(chunks):
+        inline = True if i < len(chunks) - 1 else False
+        monster_embed.add_field(name="", value=chunk, inline=False)
+    return monster_embed
+    
