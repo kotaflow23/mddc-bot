@@ -96,16 +96,17 @@ def handle_monsters(user_message):
         if monster['name'] == 'Vampire':
             monster = monsters[0]
         #monster_result = format_monster(monster)
+        print(monster['name'])
         monster_result = build_monster_embed(monster)
         return monster_result
     else:
         name_pattern = re.compile("^\?monster\s[a-zA-Z]*")
-        print(user_message)
         if name_pattern.match(user_message):
             monster = None
             #Matched the pattern for name searching."
             monster_name = user_message[9:].lower()
             # code to prevent vampire from being searched due to vampire length. remove after work around
+            print(monster_name)
             if monster_name == 'vampire':
                 monster_result = '```Error: Vampire Not Supported Currently Due to Statblock Length.```'
                 return monster_result
@@ -127,15 +128,16 @@ def handle_spells(user_message):
     if user_message == '?spell':
         spell = spells[randint(0,(len(spells)-1))]
         #monster_result = format_monster(monster)
+        print(spell['name'])
         spell_result = build_spell_embed(spell)
         return spell_result
     else:
         name_pattern = re.compile("^\?spell\s[a-zA-Z]*")
-        print(user_message)
         if name_pattern.match(user_message):
             spell = None
             #Matched the pattern for name searching."
             spell_name = user_message[7:].lower()
+            print(spell_name)
             for s in spells:
                 if s['name'].lower() == spell_name.lower():
                     spell = s
@@ -175,6 +177,20 @@ def build_spell_embed(spell):
     if "higher_levels" in spell:
         spell_embed.add_field(name="",value="**At Higher Levels:** {higher_levels}".format(**spell),inline=False)
     return(spell_embed)
+
+def build_monster_embed_description(monster):
+    monster_description = ""
+    if 'Traits' in monster:
+        monster["Traits"] = format_html(monster["Traits"])
+        monster_description += '{Traits}'.format(**monster)
+    if 'Actions' in monster:
+        monster["Actions"] = format_html(monster["Actions"])
+        monster_description += '\n**Actions**\n-----------{Actions}'.format(**monster)
+    if 'Legendary Actions' in monster:
+        monster["Legendary Actions"] = format_html(monster["Legendary Actions"])
+        monster_description += '\n**Legendary Actions**\n-----------{Legendary Actions}'.format(**monster)
+    #print(monster_description)
+    return monster_description
 
 def build_monster_embed(monster):
     monster_embed=discord.Embed(title="{name}".format(**monster), color=0x9B59B6)
