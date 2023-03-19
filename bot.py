@@ -8,6 +8,7 @@ from responses import*
 c = open('data/config.json')
 config = json.load(c)
 TOKEN = config.get("Token")
+#TOKEN = config.get("Test Token")
 
 funny_list = ["Bazinga!", "Benghazi!","Bazooka!","Bronchitis!","Zimbabwe!","Babuska!"]
 bazinga_count = 0
@@ -44,44 +45,28 @@ def run_discord_bot():
         channel = str(message.channel)
 
         if user_message == '?embed':
-            m = open('data/srd_5e_monsters.json', 'r', encoding='utf-8')
-            monsters = json.load(m)
-            m.close()
-            monster = monsters[0]
-            monster_embed=discord.Embed(title="{name}".format(**monster), color=0x9B59B6)
-            monster_embed.add_field(name="", value="*{meta}*".format(**monster),inline=True)
-            monster_embed.add_field(name="", value="----------",inline=False)
-            monster_embed.add_field(name="", value="**Armor Class**\t{Armor Class}".format(**monster),inline=False)
-            monster_embed.add_field(name="", value="**Hit Points**\t{Hit Points}".format(**monster),inline=False)
-            monster_embed.add_field(name="", value="**Speed**\t{Speed}".format(**monster),inline=False)
-            monster_embed.add_field(name="", value="----------",inline=False)
-            monster_embed.add_field(name="",value="**STR**\t\t**DEX**\t\t**CON**\t\t**INT**\t\t**WIS**\t\t**CHAR**\n\
-            {STR}{STR_mod}\t{DEX}{DEX_mod}\t{CON}{CON_mod}\t{INT}{INT_mod}\t{WIS}{WIS_mod}\t{CHA}{CHA_mod}".format(**monster))
-            monster_embed.add_field(name="", value="----------",inline=False)
-            if 'Saving Throws' in monster:
-                monster_embed.add_field(name="", value="**Saving Throws**\t{Saving Throws}".format(**monster),inline=False)
-            if 'Skills' in monster:
-                monster_embed.add_field(name="", value="**Skills**\t{Skills}".format(**monster),inline=False)
-            if 'Damage Vulnerabilities' in monster:
-                monster_embed.add_field(name="", value="**Damage Vulnerabilities**\t{Damage Vulnerabilities}".format(**monster),inline=False)
-            if 'Damage Resistances' in monster:
-                monster_embed.add_field(name="", value="**Damage Resistances**\t{Damage Resistances}".format(**monster),inline=False)
-            if 'Damage Immunities' in monster:
-                monster_embed.add_field(name="", value="**Damage Immunities**\t{Damage Immunities}".format(**monster),inline=False)
-            if 'Condition Immunities' in monster:
-                monster_embed.add_field(name="", value="**Condition Immunities**\t{Condition Immunities}".format(**monster),inline=False)
-            monster_embed.add_field(name="", value="**Languages**\t{Languages}".format(**monster),inline=False)
-            monster_embed.add_field(name="", value="**Challenge**\t{Challenge}".format(**monster),inline=False)
-            monster_embed.add_field(name="", value="----------",inline=False)
-            long_text = build_monster_embed_description(monster)
-            chunk_size = 1024
-            chunks = [long_text[i:i+chunk_size] for i in range(0, len(long_text), chunk_size)]
-            for i, chunk in enumerate(chunks):
-                inline = True if i < len(chunks) - 1 else False
-                monster_embed.add_field(name="", value=chunk, inline=False)
-            #monster_embed.add_field(name="", value=build_embed_description(monster))
-            #print(type(monster_embed))
-            await message.channel.send(embed=monster_embed)
+            s = open('data/spells.json', 'r', encoding='utf-8')
+            spells = json.load(s)
+            s.close()
+            spell = spells[0]
+            spell_embed=discord.Embed(title="{name}".format(**spell), color=0x9B59B6)
+            spell_embed.add_field(name="",value="*{type}*".format(**spell))
+            spell_embed.add_field(name="",value="",inline=False)
+            spell_embed.add_field(name="",value="**Casting Time:** {casting_time}".format(**spell),inline=False)
+            spell_embed.add_field(name="",value="**Range:** {range}".format(**spell),inline=False)
+            component_string = spell['components']['raw']
+            spell_embed.add_field(name="",value=F"**Components:** {component_string}",inline=False)
+            spell_embed.add_field(name="",value="**Duration:** {duration}".format(**spell),inline=False)
+            class_string = ""
+            for c in spell['classes']:
+                c = c.capitalize()
+                class_string += c
+                class_string += " "
+            spell_embed.add_field(name="",value=f"**Classes:** {class_string}",inline=False)
+            spell_embed.add_field(name="",value="{description}".format(**spell),inline=False)
+            if "higher_levels" in spell:
+                spell_embed.add_field(name="",value="**At Higher Levels:** {high_levels}".format(**spell),inline=False)
+            await message.channel.send(embed=spell_embed)
         
         #print(type(user_message))
         #print(f"{username} said: {user_message} in {channel}.")

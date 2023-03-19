@@ -27,6 +27,7 @@ help_data = "```The following commands have been implemented:\n\
     ?monster name - Display the selected monster from the srd. If no monster is specified, a random monster is selected.\n\
     ?roll xdy - Dice Roller. \"x\" is the number of rolls you want to make and \"y\" is the dice type. Defaults to rolling once if you don't \n\
     include an x value.\n\
+    ?spell name - Display the selected spell from the srd. If no spell is specified, a random spell is selected.\n\
     ?funny - Possibly my greatest achievement as a CS major.\n\
     \nStart any command with a question mark and it will be sent to you in a private message.\n```"
 
@@ -53,7 +54,10 @@ def handle_responses(message):
     
     if p_message.startswith('?monster'):
         #p_message = p_message[4:]
-        return handle_srd(p_message)
+        return handle_monsters(p_message)
+    
+    if p_message.startswith('?spell'):
+        return handle_spells(p_message)
 pass
 
 def handle_rolls(roll):
@@ -82,12 +86,15 @@ def handle_rolls(roll):
                     \nThe total is {final_result}.```"
     return roll_format_message
 
-def handle_srd(user_message):
+def handle_monsters(user_message):
     m = open('data/srd_5e_monsters.json', 'r', encoding='utf-8')
     monsters = json.load(m)
     m.close()
     if user_message == '?monster':
         monster = monsters[randint(0,(len(monsters)-1))]
+        # code to prevent vampire from being rolled due to vampire length. remove after work around
+        if monster['name'] == 'Vampire':
+            monster = monsters[0]
         #monster_result = format_monster(monster)
         monster_result = build_monster_embed(monster)
         return monster_result
@@ -95,16 +102,50 @@ def handle_srd(user_message):
         name_pattern = re.compile("^\?monster\s[a-zA-Z]*")
         print(user_message)
         if name_pattern.match(user_message):
-            ("Matched the pattern for name searching.")
+            monster = None
+            #Matched the pattern for name searching."
             monster_name = user_message[9:].lower()
+            # code to prevent vampire from being searched due to vampire length. remove after work around
+            if monster_name == 'vampire':
+                monster_result = '```Error: Vampire Not Supported Currently Due to Statblock Length.```'
+                return monster_result
             for m in monsters:
                 if m['name'].lower() == monster_name.lower():
                     monster = m
-            #monster_result = format_monster(monster)
-            monster_result = build_monster_embed(monster)
+            if monster is not None:
+                monster_result = build_monster_embed(monster)
+            else:
+                monster_result = '```Error: Monster Not Found.```'
         else:
-            monster_result = 'Error: Monster Not Found.'
+            monster_result = '```Error: Invalid Monster Search Format.```'
         return monster_result
+
+def handle_spells(user_message):
+    s = open('data/spells.json', 'r', encoding='utf-8')
+    spells = json.load(s)
+    s.close()
+    if user_message == '?spell':
+        spell = spells[randint(0,(len(spells)-1))]
+        #monster_result = format_monster(monster)
+        spell_result = build_spell_embed(spell)
+        return spell_result
+    else:
+        name_pattern = re.compile("^\?spell\s[a-zA-Z]*")
+        print(user_message)
+        if name_pattern.match(user_message):
+            spell = None
+            #Matched the pattern for name searching."
+            spell_name = user_message[7:].lower()
+            for s in spells:
+                if s['name'].lower() == spell_name.lower():
+                    spell = s
+            if spell is not None:
+                spell_result = build_spell_embed(spell)
+            else:
+                spell_result = '```Error: Spell Not Found.```'
+        else:
+            spell_result = '```Error: Invalid Spell Search Format.```'
+        return spell_result
 
 def format_html(key):
     key = key.replace("<p>","\n")
@@ -115,19 +156,25 @@ def format_html(key):
     key = key.replace("</strong>","**")
     return key
 
-def build_monster_embed_description(monster):
-    monster_description = ""
-    if 'Traits' in monster:
-        monster["Traits"] = format_html(monster["Traits"])
-        monster_description += '{Traits}'.format(**monster)
-    if 'Actions' in monster:
-        monster["Actions"] = format_html(monster["Actions"])
-        monster_description += '\n**Actions**\n-----------{Actions}'.format(**monster)
-    if 'Legendary Actions' in monster:
-        monster["Legendary Actions"] = format_html(monster["Legendary Actions"])
-        monster_description += '\n**Legendary Actions**\n-----------{Legendary Actions}'.format(**monster)
-    #print(monster_description)
-    return monster_description
+def build_spell_embed(spell):
+    spell_embed=discord.Embed(title="{name}".format(**spell), color=0x9B59B6)
+    spell_embed.add_field(name="",value="*{type}*".format(**spell))
+    spell_embed.add_field(name="",value="",inline=False)
+    spell_embed.add_field(name="",value="**Casting Time:** {casting_time}".format(**spell),inline=False)
+    spell_embed.add_field(name="",value="**Range:** {range}".format(**spell),inline=False)
+    component_string = spell['components']['raw']
+    spell_embed.add_field(name="",value=F"**Components:** {component_string}",inline=False)
+    spell_embed.add_field(name="",value="**Duration:** {duration}".format(**spell),inline=False)
+    class_string = ""
+    for c in spell['classes']:
+        c = c.capitalize()
+        class_string += c
+        class_string += " "
+    spell_embed.add_field(name="",value=f"**Classes:** {class_string}",inline=False)
+    spell_embed.add_field(name="",value="{description}".format(**spell),inline=False)
+    if "higher_levels" in spell:
+        spell_embed.add_field(name="",value="**At Higher Levels:** {higher_levels}".format(**spell),inline=False)
+    return(spell_embed)
 
 def build_monster_embed(monster):
     monster_embed=discord.Embed(title="{name}".format(**monster), color=0x9B59B6)
